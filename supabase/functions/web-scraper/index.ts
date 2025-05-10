@@ -32,22 +32,22 @@ Deno.serve(async (req) => {
       url,
       maxDepth,
       limit,
+      // Webhook is required and must be defined directly in the main object
+      webhook: {
+        url: "https://webhook.site/mock-webhook-url",
+      },
       scrapeOptions: {
         onlyMainContent,
+        // The actions array must include at least one action with type "wait"
         actions: [{ type: "wait" }],
         blockAds: true,
       },
     };
 
-    // For Firecrawl, a webhook is required
-    // Use a mock webhook URL if none is provided
-    requestBody.webhook = {
-      url: "https://webhook.site/mock-webhook-url",
-    };
-
+    // Log the full request details for debugging
     console.log(
       "Making request to Firecrawl with body:",
-      JSON.stringify(requestBody),
+      JSON.stringify(requestBody, null, 2),
     );
     console.log("Using PICA keys:", {
       secretKeyExists: Boolean(Deno.env.get("PICA_SECRET_KEY")),
@@ -74,6 +74,10 @@ Deno.serve(async (req) => {
     );
 
     console.log("Firecrawl API response status:", response.status);
+    console.log(
+      "Firecrawl API response headers:",
+      Object.fromEntries(response.headers.entries()),
+    );
 
     // Try to parse the response as JSON
     let data;
