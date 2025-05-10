@@ -64,6 +64,11 @@ export function WebScraperForm() {
         throw new Error(error.message);
       }
 
+      // Check if the response indicates an error from the Firecrawl API
+      if (!data.success) {
+        throw new Error(data.error || "Failed to start crawl job");
+      }
+
       setResult({ success: true, id: data.id });
     } catch (error) {
       console.error("Error starting web scrape:", error);

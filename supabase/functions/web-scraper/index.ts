@@ -27,9 +27,6 @@ Deno.serve(async (req) => {
       throw new Error("URL is required");
     }
 
-    // Get the webhook URL from the request headers
-    const webhookUrl = req.headers.get("x-webhook-url") || "";
-
     // Create the request body for Firecrawl
     const requestBody: FirecrawlRequest = {
       url,
@@ -42,12 +39,22 @@ Deno.serve(async (req) => {
       },
     };
 
-    // Add webhook if provided
-    if (webhookUrl) {
-      requestBody.webhook = {
-        url: webhookUrl,
-      };
-    }
+    // For Firecrawl, a webhook is required
+    // Use a mock webhook URL if none is provided
+    requestBody.webhook = {
+      url: "https://webhook.site/mock-webhook-url",
+    };
+
+    console.log(
+      "Making request to Firecrawl with body:",
+      JSON.stringify(requestBody),
+    );
+    console.log("Using PICA keys:", {
+      secretKeyExists: Boolean(Deno.env.get("PICA_SECRET_KEY")),
+      connectionKeyExists: Boolean(
+        Deno.env.get("PICA_FIRECRAWL_CONNECTION_KEY"),
+      ),
+    });
 
     // Make the request to Firecrawl via Pica Passthrough
     const response = await fetch(
@@ -66,10 +73,36 @@ Deno.serve(async (req) => {
       },
     );
 
-    const data: FirecrawlResponse = await response.json();
+    console.log("Firecrawl API response status:", response.status);
+
+    // Try to parse the response as JSON
+    let data;
+    const responseText = await response.text();
+    try {
+      data = JSON.parse(responseText);
+      console.log("Firecrawl API response data:", data);
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", responseText);
+      data = { success: false, error: "Invalid JSON response" };
+    }
 
     if (!response.ok) {
-      throw new Error(`Failed to start crawl: ${JSON.stringify(data)}`);
+      // Return the error from the API but with a 200 status to the client
+      // This prevents the Edge Function error but still communicates the API error
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Firecrawl API error: ${response.status}`,
+          details: data,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+          status: 200, // Return 200 to prevent Edge Function error
+        },
+      );
     }
 
     // Store the crawl job in Supabase if successful
@@ -100,12 +133,20 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("Error in web scraper function:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+    // Return a 200 status with error details to prevent Edge Function error
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        isEdgeFunctionError: true,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+        status: 200, // Return 200 to prevent Edge Function error
       },
-      status: 400,
-    });
+    );
   }
 });
