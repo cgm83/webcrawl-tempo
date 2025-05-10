@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.6";
-import { FirecrawlRequest, FirecrawlResponse } from "@shared/types.ts";
+import { FirecrawlRequest } from "@shared/types.ts";
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -28,20 +28,18 @@ Deno.serve(async (req) => {
     }
 
     // Create the request body for Firecrawl
-    const requestBody: FirecrawlRequest = {
+    // IMPORTANT: webhook must be at the root level and actions array must include at least one action
+    const requestBody = {
       url,
       maxDepth,
       limit,
-      // Webhook is required and must be defined directly in the main object
-      webhook: {
-        url: "https://webhook.site/mock-webhook-url",
-      },
-      scrapeOptions: {
-        onlyMainContent,
-        // The actions array must include at least one action with type "wait"
-        actions: [{ type: "wait" }],
-        blockAds: true,
-      },
+      // Webhook URL directly at the root level as required by Firecrawl API
+      webhook: "https://webhook.site/mock-webhook-url",
+      // Actions array must include at least one action of type "wait"
+      actions: [{ type: "wait", milliseconds: 1000 }],
+      formats: ["markdown", "html"],
+      onlyMainContent,
+      blockAds: true,
     };
 
     // Log the full request details for debugging
@@ -58,7 +56,7 @@ Deno.serve(async (req) => {
 
     // Make the request to Firecrawl via Pica Passthrough
     const response = await fetch(
-      "https://api.picaos.com/v1/passthrough/crawl",
+      "https://api.picaos.com/v1/passthrough/v1/scrape",
       {
         method: "POST",
         headers: {
@@ -67,7 +65,7 @@ Deno.serve(async (req) => {
           "x-pica-connection-key":
             Deno.env.get("PICA_FIRECRAWL_CONNECTION_KEY") || "",
           "x-pica-action-id":
-            "conn_mod_def::GClH_mo3YYg::aIBsc5axSY6zSqWRu0s-hg",
+            "conn_mod_def::GClH_gYvdtQ::cbt1pY3eSOW7SsB6Ezov8A",
         },
         body: JSON.stringify(requestBody),
       },

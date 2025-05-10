@@ -84,7 +84,11 @@ export function WebScraperForm() {
 
   return (
     <div className="bg-card p-6 rounded-lg border shadow-sm">
-      <h2 className="text-2xl font-bold mb-6">Web Scraper</h2>
+      <h2 className="text-2xl font-bold mb-4 text-primary">Web Scraper</h2>
+      <p className="text-muted-foreground mb-6">
+        Extract and analyze content from any website using Firecrawl's powerful
+        web scraping capabilities.
+      </p>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -203,6 +207,10 @@ export function WebScraperForm() {
             <>
               <h3 className="font-semibold">Error Starting Crawl</h3>
               <p className="mt-1">{result.error}</p>
+              <p className="mt-2 text-sm">
+                {result.error?.includes("400") &&
+                  "Please check that all required fields are correctly formatted. The API requires a valid URL and proper configuration."}
+              </p>
             </>
           )}
         </div>
